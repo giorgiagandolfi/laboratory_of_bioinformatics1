@@ -12,4 +12,36 @@ We have to search all human proteins in SwissProt containing the Kunitz domain b
 ### Find human proteins without Kunitz domain in SwissProt
 We have to search all human proteins in SwissProt not containing the Kunitz domain by using the following query:`NOT database: (type:pfam PF00014) AND organism:"Homo sapiens (Human) [9606]" AND reviewed: yes`. We retrieve 20347 proteins. Let's download them in fasta format. 
 
+### Create the human database as reference
+We generate the database of human proteins containing Kunitz domain usign this command:
+`formatdb -i Human_PF00014.fasta -p`
+
+### Create the training and testing sets for the negatives
+We want to split the `Human_NotPF00014.fasta`, which contains 20347 proteins, into two sets, the training and the testing. We decide to split the negative set at the 10000th protein sequence included. We want to find the number of the line referring to the end of the 10000th protein sequence.
+`grep ">" Human_NotPF00014.fasta -m 10000 | tail -1
+>sp|O95081|AGFG2_HUMAN Arf-GAP domain and FG repeat-containing protein 2 OS=Homo sapiens OX=9606 GN=AGFG2 PE=1 SV=2
+grep ">" Human_NotPF00014.fasta -m 10001 -n | tail -1
+109075:>sp|P32970|CD70_HUMAN CD70 antigen OS=Homo sapiens OX=9606 GN=CD70 PE=1 SV=2`
+
+The 10000th protein sequence ends at line 10974. Let's split the negative dataset.
+
+`head -n 109074 Human_NotPF00014.fasta  >Human_NotPF00014_Training.fasta
+tail -n +109075 Human_NotPF00014.fasta  >Human_NotPF00014_Testing.fasta`
+
+If you want to check type this command:
+
+`head Human_NotPF00014_Training.fasta`
+
+and see the output. My output is the following:
+
+`>sp|Q8N8B7|TEANC_HUMAN Transcription elongation factor A N-terminal and central domain-containing protein OS=Homo sapiens OX=9606 GN=TCEANC PE=1 SV=2
+MSDKNQIAARASLIEQLMSKRNFEDLGNHLTELETIYVTKEHLQETDVVRAVYRVLKNCP
+SVALKKKAKCLLSKWKAVYKQTHSKARNSPKLFPVRGNKEENSGPSHDPSQNETLGICSS
+NSLSSQDVAKLSEMIVPENRAIQLKPKEEHFGDGDPESTGKRSSELLDPTTPMRTKCIEL
+LYAALTSSSTDQPKADLWQNFAREIEEHVFTLYSKNIKKYKTCIRSKVANLKNPRNSHLQ
+QNLLSGTTSPREFAEMTVMEMANKELKQLRASYTESCIQEHYLPQVIDGTQTNKIKCRRC
+EKYNCKVTVIDRGTLFLPSWVRNSNPDEQMMTYVICNECGEQWYHSKWVCW
+>sp|O75494|SRS10_HUMAN Serine/arginine-rich splicing factor 10 OS=Homo sapiens OX=9606 GN=SRSF10 PE=1 SV=1
+MSRYLRPPNTSLFVRNVADDTRSEDLRREFGRYGPIVDVYVPLDFYTRRPRGFAYVQFED
+VRDAEDALHNLDRKWICGRQIEIQFAQGDRKTPNQMKAKEGRNVYSSSRYDDYDRYRRSR`
 
