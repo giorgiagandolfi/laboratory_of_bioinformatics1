@@ -10,7 +10,9 @@ The main steps are:
 <p align="justify">
 We have to search all human proteins in SwissProt containing the Kunitz domain by using the following query: `reviewed: yes organism:"Homo sapiens (Human) [9606]" database: (type:pfam PF00014)`. We retrieve 18 proteins. Let's download them in fasta format. Then we search in UniProt all the non-human proteins containing the Kunitz domain by using the following query: `database: (type:pfam PF00014) NOT organism:"Homo sapiens (Human) [9606]" AND reviewed: yes`. We retrieve 341 proteins. Let's download them in fasta format too. 
 </p>
+
 ### Find human proteins without Kunitz domain in SwissProt
+
 <p align="justify">
 We have to search all human proteins in SwissProt not containing the Kunitz domain by using the following query:`NOT database: (type:pfam PF00014) AND organism:"Homo sapiens (Human) [9606]" AND reviewed: yes`. We retrieve 20347 proteins. Let's download them in fasta format. 
 </p>
