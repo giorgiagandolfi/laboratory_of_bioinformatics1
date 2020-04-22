@@ -14,7 +14,7 @@ We have to search all human proteins in SwissProt not containing the Kunitz doma
 
 ### Create the human database as reference
 We generate the database of human proteins containing Kunitz domain usign this command:
-`formatdb -i Human_PF00014.fasta -p`
+`formatdb -i Human_PF00014.fasta -p T`
 
 ### Create the training and testing sets for the negatives
 We want to split the `Human_NotPF00014.fasta`, which contains 20347 proteins, into two sets, the training and the testing. We decide to split the negative set at the 10000th protein sequence included. We want to find the number of the line referring to the end of the 10000th protein sequence.
@@ -25,48 +25,62 @@ grep ">" Human_NotPF00014.fasta -m 10001 -n | tail -1
 The 10000th protein sequence ends at line 10974. Let's split the negative dataset.
 `head -n 109074 Human_NotPF00014.fasta  >Human_NotPF00014_Training.fasta
 tail -n +109075 Human_NotPF00014.fasta  >Human_NotPF00014_Testing.fasta`
+The training test contains 10000 proteins while the testing set contains 10347 proteins. To check the number of proteins in the file:
+`grep ">" Human_NotPF00014_Training.fasta | wc -l`
 
 ### BLAST the positive training set 
-Now we BLAST the positive set against itself as a consistency test: we are interesting in seeing the range of E-value that we get. 
+Now we BLAST the positive set against itself as a consistency test: we are interesting in seeing the range of E-value that we get. The command `-m 8` is needed for the tabular format.
 `blastpgp -i Human_PF00014.fasta -d Human_PF00014.fasta -o Human_PF00014.bl8 -m 8`
-Then let's sort the output file based on the column containing the e-vale (column 11).  
-`sort -grk 11 Human_PF00014.bl8`
+Then let's sort the output file based on the column containing the e-vale (column 11). The worst e-value will be at the top of the list. The worts e-value is 9.9: this beacuse the default e-value of BLAST is 10. 
+`sort -gk 11 Human_PF00014.bl8`
+If we want, we can increase the evalue:
+`blastpgp -i Human_PF00014.fasta -d Human_PF00014.fasta -o Human_PF00014.bl8 -m 8 -e 1000`
 The option -g can be used for sorting instead of -n. -g means "general sort". Sometimes we have to modify our ./bashrc file by adding the alias:
 `alias sort = 'LC_ALL=C sort `
 Save the changes in ./bashrc file and quit/reopen the terminal.
+We can extract all the complete matches of the sequence against itself, we have to run this command:
+`awk '{if($1==$2) print $0}' HUman_PF00014.bl8}' | wc`
+In this way we get 18, as espected.
 
 ### Negative training set
 Now we BLAST the negative training set against the Human_PF00014.fasta database.
-`blastpgp -i Human_NotPF00014_Training.fasta -d Human_PF00014.fasta -o Human_NOtPF00014_training.bl8 -m 8`
-I can also specify an e-value like `-e 100`. Remember: the default e-value of BLAST is 10. 
-Then, we want to sort the output in order to find the sequence with the lowest e-value (the best one). 
+`blastpgp -i Human_NotPF00014_Training.fasta -d Human_PF00014.fasta -o Human_NOtPF00014_training.bl8 -m 8 -e 100`. Remember: the default e-value of BLAST is 10. Now we want to know the best hit between the negative non_Kunitz and the human Kunitz. We want to sort the output in order to find the sequence with the lowest e-value (the best one). 
 `sort -gk 11 Human_NotPF00014_Training.bl8`
-It is possible to observe that there are  any non-Kunitz domains proteins that have a really low e-value. 
+There are two sequences that are not classified as human KUnitz, but have an e-value of 0.0. Probably these two sequence have a similar domain to Kunitz, but not annotaed as Kunitz domain. We see that the e-value is around 0.001. This threshold can be used as a value for classify as negatives the sequences of the training set.  
 
 ### Negative testing set
 Now we BLAST the negative testing set against the HUman_PF00014.fasta databse. 
 `blastpgp -i Human_NotPF00014_Testing.fasta -d Human_PF00014.fasta -o Human_NotPF00014_Testing.bl8 -m 8`
+If we sort against the 11th, we have very low number of e-value.
 
 ### Positive testing set
 Now we BLAST the positive testing set against the HUman_PF00014.fasta databse. 
-`blastpgp -i NotHuman_PF00014.fasta -d Human_PF00014.fasta -o NotHuman_PF00014.bl8 -m 8`
-We need to rank the output on the positive set. To do so we have to grep based on the identifiers and select the best e-value for each ids.
+`blastpgp -i NotHuman_PF00014.fasta -d Human_PF00014.fasta -o NotHuman_PF00014.bl8 -m 8 -e 1000`.
+We have multiple hits: we need to provide only the higher score of each sequence. We need to rank the output on the positive set. To do so we have to grep based on the identifiers and select the best e-value for each ids.
 
-`for i in `awk '{print $1}' NotHuman_PF00014.bl8 |sort -u `
-do 
+`for i in ``awk '{print $1}' NotHuman_PF00014.bl8 |sort -u`
+`do 
   grep $i NotHuman_PF00014.bl8 |sort -gk 11 |head -n 1
-done > NotHuman_PF00014.bl8.best`
+done > NotHuman_PF00014.bl8.best``
+
+` If we sort against the 11th column in reverse mode, we get the worst e-value between human and non-human proteins with Kunitz domain, that can be used as a selection threshold. The worst e-value is 0.054.
+
+So far we have:
+1. for the .best we have very low e-values
+2. the best e-value of the negative training is lower than the best e-value of the negative testing set.
 
 Now we have to select the e-value of 0.0001 as a classification thresholf for the Kunitz domain proteins. In this way we can calculate the number of proteins with the maximum e-value below that threshold. 
 
 `awk '{if ($11<0.001) print $1}'  NotHuman_PF00014.bl8.best  |sort -u |wc -l
-  340
-
-awk '{if ($11<0.001) print $1}'  Human_NotPF00014_Training.bl8  |sort -u |wc
-  290
-
-awk '{if ($11<0.001) print $1}'  Human_NotPF00014_Tresting.bl8  |sort -u |wc -l
-  200`
+  340` #true positive
+`awk '{if ($11>=0.001) print $1}'  NotHuman_PF00014.bl8.best  |sort -u |wc -l
+  1` #false negative
+  `awk '{if ($11<0.001) print $1}'  Human_NotPF00014_Training.bl8  |sort -u |wc
+  290`#false positive
+true positive=10000-290
+`awk '{if ($11<0.001) print $1}'  Human_NotPF00014_Testing.bl8  |sort -u |wc -l
+  200` #false positive
+ true positive=10347-200
  
 Now we can calculate the performance of the method selecting an e-value=0.0001 in terms of accurancy adn MCC (Matthews Correlation Coeffcient). This program takes in inuput the protein ID, the lowest e-value of the protein and the class (0: false positive/false negatives and 1: treu positive/true negative),
 
