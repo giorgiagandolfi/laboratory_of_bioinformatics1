@@ -1,4 +1,4 @@
-# Project workflow
+# Project workflow - PDB search part
 First of all, we select from PDB the structures containging the Kunitz domain using the advanced search. In the query of the search we insert:
 * containing Pfam BPTI-Kunitz identifier: PF00014;
 * number of polymer residues less then 100;
